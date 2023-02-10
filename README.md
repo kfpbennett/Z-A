@@ -7,7 +7,7 @@ Basic workflow:
 - Align to a reference (we need to decide vitellinus vs. candei) using bwa mem (result: a bam file for each individual)
 - Call SNPs using Stacks gstacks
 - Create an unfiltered VCF file containing all sites, variant and invariant using Stacks populations (result: one VCF file per population)
-  (NOTE ON THE ABOVE: WE MAY NOT BE ABLE TO USE STACKS FOR THIS. I'M LOOKING INTO IT)
+- (NOTE ON THE ABOVE: WE MAY NOT BE ABLE TO USE STACKS FOR THIS. I'M LOOKING INTO IT)
 - Filter the VCF file for quality and missingness using VCFtools (result: one VCF file per population)
 - Calculate pi using pixy (result: pixy output file)
 - TBD: how to translate the pixy results into final numbers per population and per chromosome
