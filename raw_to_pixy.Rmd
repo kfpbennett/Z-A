@@ -1,0 +1,146 @@
+---
+title: "Z-A Methods pre-R"
+author: "Kevin Bennett"
+date: "2/13/2023"
+output: html_document
+---
+
+Initial processing of raw reads in Stacks.
+```{bash}
+process_radtags \
+-p /path/to/raw/reads/ \
+-o /path/to/processed/reads/ \
+-b /path/to/barcodes/samp_barcodes.txt \
+--paired \
+--clean \
+--quality \
+--rescue \
+--renz-1 sbfI \
+-i gzfastq \
+--adapter_1 GATCGGAAGAGCGGTTCAGCAGGAATGCCGAGACCGATCAGAACAA \
+--adapter_2 AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT \
+--adapter_mm 2
+```
+
+Index the reference
+```{bash}
+bwa index /path/to/reference/GCF_001715985.3_ASM171598v3_genomic.fna
+```
+
+Align processed reads to the reference. This should be written into a Hydra job file.
+```{bash}
+bwa mem \
+-t 4 \
+/path/to/reference/GCF_001715985.3_ASM171598v3_genomic.fna \
+/path/to/processed/reads/$1.1.fq.gz \
+/path/to/processed/reads/$1.2.fq.gz | \
+samtools view -b -h | \
+samtools sort --threads 4 \
+-o /path/to/aligned/reads/$1.bam
+```
+
+Submit above job with:
+```{bash}
+for x in *.1.fq*; do x=${x%.1*}; qsub -N align_${x} -o align_${x}.log align.job ${x}; done
+```
+
+Make a list of .bams per population
+```{bash}
+find "$PWD" | grep 'example_pop' > example_bams.txt
+```
+
+Make an (unfiltered) all-sites VCF using bcftools
+```{bash}
+bcftools mpileup \
+-f /path/to/reference/GCF_001715985.3_ASM171598v3_genomic.fna \
+-b /path/to/aligned/reads/example_bams.txt  | \
+bcftools call \
+-m \
+-Ov \
+-f GQ \
+-o /path/to/VCFs/unfiltered/example-allsites.vcf
+```
+
+Remove indels, set to uncalled any genotypes with a GQ lower than 40 and a DP lower than 4 or above 60. Remove sites missing in more than 75% of individuals.
+```{bash}
+vcftools \
+--vcf /path/to/VCFs/unfiltered/example-allsites.vcf \
+--remove-indels \
+--minGQ 40 \
+--minDP 4 \
+--maxDP 60 \
+--max-missing 0.25 \
+--recode \
+--out /path/to/VCFs/filter1/example-snp_GQ40_DP4-60_mm75
+```
+
+List missingness by individual
+``` {bash}
+vcftools \
+--vcf /path/to/VCFs/filter1/example-snp_GQ40_DP4-60_mm75.recode.vcf \
+--missing-indv \
+--out /path/to/VCFs/filter1/example
+```
+
+Use that to filter out individuals missing more than 40% of all SNPs.
+``` {bash}
+awk '$5 > 0.4 {print $1}' /path/to/VCFs/filter1/example.imiss > /path/to/VCFs/filter1/example-imiss_40.txt
+
+vcftools \
+--vcf /path/to/VCFs/filter1/example-snp_GQ40_DP4-60_mm75.recode.vcf \
+--remove /path/to/VCFs/filter1/example-imiss_40.txt \
+--recode \
+--out /path/to/VCFs/filter2/example-snp_GQ40_DP4-60_mm75_imiss40
+```
+
+Remove sites still missing from more than 10% of all individuals
+```{bash}
+vcftools \
+--vcf /path/to/VCFs/filter2/example-snp_GQ40_DP4-60_mm75_imiss40.recode.vcf \
+--max-missing 0.9 \
+--recode \
+--out /path/to/VCFs/filter3/example-snp_GQ40_DP4-60_mm75_imiss40_mm10
+```
+
+List missingness by individual
+``` {bash}
+vcftools \
+--vcf /path/to/VCFs/filter3/example-snp_GQ40_DP4-60_mm75_imiss40_mm10.recode.vcf \
+--missing-indv \
+--out /path/to/VCFs/filter3/example
+```
+
+Use that to filter out individuals missing more than 10% of all SNPs
+``` {bash}
+awk '$5 > 0.X {print $1}' /path/to/VCFs/filter3/example.imiss > /path/to/VCFs/filter3/example-imiss_10.txt
+
+vcftools \
+--vcf /path/to/VCFs/filter3/example-snp_GQ40_DP4-60_mm75_imiss40_mm10.recode.vcf \
+--remove /path/to/VCFs/filter3/example-imiss_10.txt \
+--recode \
+--out /path/to/VCFs/filter4/example-filtered
+```
+
+Compress and index the output file
+```{bash}
+bgzip example-filtered.recode.vcf
+tabix example-filtered.recode.vcf.gz
+```
+
+Not shown here: make "population" file with .bam column and population column (no header)
+
+Calculate pi using pixy
+```{bash}
+pixy \
+--stats pi \
+--vcf /path/to/VCFs/filter4/example-filtered.recode.vcf.gz \
+--populations /path/to/popfile/example-pop.txt \
+--window_size 10000 \
+--output_folder /path/to/pixy/output/ \
+--output_prefix example \
+--n_cores 8
+```
+
+Output file will be example_pi.txt. Read this into R and calculate Z-A stats using z-a.R
+
+
