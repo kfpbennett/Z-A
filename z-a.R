@@ -63,14 +63,14 @@ barplot(pis$pi, names.arg = pis$pop)
 plot(pis$n, pis$pi)
 
 # Calculate Z:A ratios
-el_za <- calc.ZA(el, 'Chr1A')
-em_za <- calc.ZA(em, 'Chr1A')
-eu_za <- calc.ZA(eu, 'Chr1A')
-wn_za <- calc.ZA(wn, 'Chr1A')
-ws_za <- calc.ZA(ws, 'Chr1A')
-wl_za <- calc.ZA(wl, 'Chr1A')
-wm_za <- calc.ZA(wm, 'Chr1A')
-wu_za <- calc.ZA(wu, 'Chr1A')
+el_za <- calc.ZA(el, 'Chr01A')
+em_za <- calc.ZA(em, 'Chr01A')
+eu_za <- calc.ZA(eu, 'Chr01A')
+wn_za <- calc.ZA(wn, 'Chr01A')
+ws_za <- calc.ZA(ws, 'Chr01A')
+wl_za <- calc.ZA(wl, 'Chr01A')
+wm_za <- calc.ZA(wm, 'Chr01A')
+wu_za <- calc.ZA(wu, 'Chr01A')
 
 # Update dataframe
 pis <- pis %>%
