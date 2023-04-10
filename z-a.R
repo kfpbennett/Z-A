@@ -6,26 +6,41 @@ library(data.table)
 library(tidyverse)
 
 # Make ZA function
-calc.ZA <- function(dat, zlist) {
+calc.ZA <- function(dat, autosome) {
   z <- 
-    sum(dat[dat$chromosome %in% Zs,]$count_diffs)/
-    sum(dat[dat$chromosome %in% Zs,]$count_comparisons)
+    sum(dat[dat$chrom == 'ChrZ',]$count_diffs)/
+    sum(dat[dat$chrom == 'ChrZ',]$count_comparisons)
   a <-
-    sum(dat[!dat$chromosome %in% Zs,]$count_diffs)/
-    sum(dat[!dat$chromosome %in% Zs,]$count_comparisons)
+    sum(dat[dat$chrom == autosome,]$count_diffs)/
+    sum(dat[dat$chrom == autosome,]$count_comparisons)
   
   return(z/a)
 }
 
+# Function to make reading data easier
+read_pi <- function(path, chrom_df, dropna = TRUE) {
+  dat <- fread(path) %>%
+    rename(scaffold = chromosome) %>%
+    left_join(chrom_df, by = 'scaffold')
+  if(dropna == TRUE) {
+    dat <- drop_na(dat)
+  }
+  return(dat)
+}
+
+# Read in scaffold-chromosome conversion
+chroms <- fread('../chrom-scaf_conversion.txt')
+
+
 # Read in population data
-el <- fread('EL_pi.txt') %>% drop_na()
-em <- fread('EM_pi.txt') %>% drop_na()
-eu <- fread('EU_pi.txt') %>% drop_na()
-wn <- fread('WN_pi.txt') %>% drop_na()
-ws <- fread('WS_pi.txt') %>% drop_na()
-wl <- fread('WL_pi.txt') %>% drop_na()
-wm <- fread('WM_pi.txt') %>% drop_na()
-wu <- fread('WU_pi.txt') %>% drop_na()
+el <- read_pi('EL_pi.txt', chroms)
+em <- read_pi('EM_pi.txt', chroms)
+eu <- read_pi('EU_pi.txt', chroms)
+wn <- read_pi('WN_pi.txt', chroms)
+ws <- read_pi('WS_pi.txt', chroms)
+wl <- read_pi('WL_pi.txt', chroms)
+wm <- read_pi('WM_pi.txt', chroms)
+wu <- read_pi('WU_pi.txt', chroms)
 
 # Calculate total pi
 el_pi <- sum(el$count_diffs)/sum(el$count_comparisons)
@@ -47,25 +62,20 @@ pis <- data.frame(pop = pops, pi = pi_list, n = pop_n)
 barplot(pis$pi, names.arg = pis$pop)
 plot(pis$n, pis$pi)
 
-# Z scaffolds
-Zs <- c('NW_021937843.1','NW_021938866.1','NW_021940553.1','NW_021940508.1','NW_021939170.1',
-        'NW_021939108.1','NW_021939324.1','NW_021940612.1','NW_021939718.1','NW_021938802.1',
-        'NW_021938319.1','NW_021940292.1','NW_021938983.1','NW_021939037.1','NW_021940917.1')
-
 # Calculate Z:A ratios
-el_za <- calc.ZA(el, Zs)
-em_za <- calc.ZA(em, Zs)
-eu_za <- calc.ZA(eu, Zs)
-wn_za <- calc.ZA(wn, Zs)
-ws_za <- calc.ZA(ws, Zs)
-wl_za <- calc.ZA(wl, Zs)
-wm_za <- calc.ZA(wm, Zs)
-wu_za <- calc.ZA(wu, Zs)
+el_za <- calc.ZA(el, 'Chr1A')
+em_za <- calc.ZA(em, 'Chr1A')
+eu_za <- calc.ZA(eu, 'Chr1A')
+wn_za <- calc.ZA(wn, 'Chr1A')
+ws_za <- calc.ZA(ws, 'Chr1A')
+wl_za <- calc.ZA(wl, 'Chr1A')
+wm_za <- calc.ZA(wm, 'Chr1A')
+wu_za <- calc.ZA(wu, 'Chr1A')
 
 # Update dataframe
 pis <- pis %>%
-  cbind(za = c(el_za, em_za, eu_za, wn_za, ws_za, wl_za, wm_za, wu_za))
+  cbind(za2 = c(el_za, em_za, eu_za, wn_za, ws_za, wl_za, wm_za, wu_za))
 
 # Plot some stats
-plot(pis$n,pis$za)
+plot(pis$n,pis$za2)
 barplot(pis$za, names.arg = pis$pop)
